@@ -1,4 +1,36 @@
 .venv/
 venv/
 .env
+# Virtual Environment
+ 
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Uploaded files
+app/uploads/
+
+# Alembic cache
+alembic/__pycache__/
