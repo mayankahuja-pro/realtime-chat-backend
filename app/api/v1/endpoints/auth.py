@@ -17,6 +17,11 @@ from app.models.user import User
  
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.schemas.auth import (
+    RefreshTokenRequest,
+    AccessTokenResponse,
+) 
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
@@ -72,6 +77,7 @@ async def login(
             detail=str(e),
         )
 
+# get currunt user
 @router.get(
     "/me",
     response_model=UserResponse,
@@ -80,3 +86,26 @@ async def me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+# refresh access token
+@router.post(
+    "/refresh",
+    response_model=AccessTokenResponse,
+)
+async def refresh_token(
+    request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = UserService(UserRepository(db))
+
+    try:
+        return await service.refresh_access_token(
+            request.refresh_token
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=str(e),
+        )

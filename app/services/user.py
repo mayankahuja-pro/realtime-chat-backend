@@ -10,6 +10,9 @@ from app.core.auth import (
 from app.core.security import verify_password
 from app.schemas.auth import LoginRequest
 
+from jose import JWTError
+from app.core.auth import decode_token
+
 class UserService:
 
     # initialize the repository
@@ -70,3 +73,34 @@ class UserService:
             "refresh_token": refresh_token,
             "token_type": "bearer",
         }
+
+
+    async def refresh_access_token(self, refresh_token: str):
+
+        try:
+            payload = decode_token(refresh_token)
+
+            user_id = payload.get("sub")
+
+            if user_id is None:
+                raise ValueError("Invalid refresh token")
+
+        except JWTError:
+            raise ValueError("Invalid refresh token")
+
+        user = await self.repository.get_by_id(user_id)
+
+        if not user:
+            raise ValueError("User not found")
+
+        return {
+        "access_token": create_access_token(
+            {
+                "sub": str(user.id),
+                "email": user.email,
+            }
+        ),
+        "token_type": "bearer",
+        }   
+
+
