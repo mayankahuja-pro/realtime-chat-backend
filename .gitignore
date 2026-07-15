@@ -34,3 +34,5 @@ app/uploads/
 
 # Alembic cache
 alembic/__pycache__/
+
+prompt.txt

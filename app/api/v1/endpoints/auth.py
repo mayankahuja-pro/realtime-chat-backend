@@ -5,7 +5,10 @@ from app.db.session import get_db
 from app.repositories.user import UserRepository
 from app.schemas.user import UserCreate, UserResponse
 from app.services.user import UserService
-
+from app.schemas.auth import (
+    LoginRequest,
+    TokenResponse,
+)
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
@@ -32,5 +35,28 @@ async def signup(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+)
+async def login(
+    data: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+
+    service = UserService(
+        UserRepository(db)
+    )
+
+    try:
+        return await service.login(data)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=401,
             detail=str(e),
         )
