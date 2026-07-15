@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     PORT: int
 
     DATABASE_URL: str
-
+    REFRESH_TOKEN_EXPIRE_DAYS: int
     SECRET_KEY: str
     ALGORITHM: str
 
