@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-
+from app.exceptions.handlers import register_exception_handlers
 from fastapi import FastAPI
 
 from app.api.v1.api import api_router
@@ -25,5 +25,7 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+register_exception_handlers(app)
 
 app.include_router(api_router)
