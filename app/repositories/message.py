@@ -3,8 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.message import Message
 
+from sqlalchemy import or_, and_, select
+from app.models.message import Message
 
 class MessageRepository:
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -14,23 +17,54 @@ class MessageRepository:
         await self.db.refresh(message)
         return message
 
+    # async def get_conversation(
+    #     self,
+    #     user1,
+    #     user2,
+    # ):
+    #     stmt = (
+    #         select(Message)
+    #         .where(
+    #             ((Message.sender_id == user1) &
+    #              (Message.receiver_id == user2))
+    #             |
+    #             ((Message.sender_id == user2) &
+    #              (Message.receiver_id == user1))
+    #         )
+    #         .order_by(Message.created_at.asc())
+    #     )
+
+    #     result = await self.db.execute(stmt)
+
+    #     return result.scalars().all()
+
     async def get_conversation(
         self,
-        user1,
-        user2,
+        user1: str,
+        user2: str,
+        limit: int = 20,
+        offset: int = 0,
     ):
         stmt = (
             select(Message)
             .where(
-                ((Message.sender_id == user1) &
-                 (Message.receiver_id == user2))
-                |
-                ((Message.sender_id == user2) &
-                 (Message.receiver_id == user1))
+                or_(
+                    and_(
+                        Message.sender_id == user1,
+                        Message.receiver_id == user2,
+                    ),
+                    and_(
+                        Message.sender_id == user2,
+                        Message.receiver_id == user1,
+                    ),
+                )
             )
-            .order_by(Message.created_at.asc())
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
 
         result = await self.db.execute(stmt)
 
         return result.scalars().all()
+        
