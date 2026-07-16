@@ -8,8 +8,10 @@ from app.repositories.message import MessageRepository
 from app.services.message import MessageService
 from app.websocket.manager import manager
 
+import json
 router = APIRouter()
 
+data = json.loads(await websocket.receive_text())
 
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(
@@ -59,7 +61,42 @@ async def websocket_endpoint(
             )
 
     except WebSocketDisconnect:
+
+        manager.disconnect(user_id)
+
+    except Exception:
+
+        manager.disconnect(user_id)
+
+    finally:
+
         manager.disconnect(user_id)
 
     finally:
         await db.close()
+    
+        if data["type"]=="ping":
+
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type":"pong"
+                    }
+                )
+            )
+
+            continue
+
+    if data["type"] == "typing":
+
+    await manager.send_personal_message(
+        data["receiver_id"],
+        json.dumps(
+            {
+                "type": "typing",
+                "sender": user_id
+            }
+        )
+    )
+
+    continue
