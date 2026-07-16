@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.logger import logger
 from app.db.session import engine
 
 
@@ -12,9 +13,9 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(lambda conn: None)
-        print("✅ Database Connected Successfully")
+        logger.info("✅ Database Connected Successfully")
     except Exception as e:
-        print(f"❌ Database Connection Failed: {e}")
+        logger.error(f"❌ Database Connection Failed: {e}")
     yield
     await engine.dispose()
 

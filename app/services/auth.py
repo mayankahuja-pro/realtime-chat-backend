@@ -9,6 +9,7 @@ from app.core.auth import (
 )
 from app.core.security import verify_password
 from app.schemas.auth import LoginRequest
+from app.core.logger import logger
 
 from jose import JWTError
 from app.core.auth import decode_token
@@ -42,17 +43,26 @@ class AuthService:
 
     # login
     async def login(self, data: LoginRequest):
+        email = data.email
         user = await self.repository.get_by_email(
-            data.email
+            email
         )
 
         if not user:
+            logger.error(
+                "Login failed for %s",
+                email,
+            )
             raise ValueError("Invalid email or password")
 
         if not verify_password(
             data.password,
             user.password,
         ):
+            logger.error(
+                "Login failed for %s",
+                email,
+            )
             raise ValueError("Invalid email or password")
 
         access_token = create_access_token(
@@ -66,6 +76,11 @@ class AuthService:
             {
                 "sub": str(user.id)
             }
+        )
+
+        logger.info(
+            "User %s logged in",
+            user.email,
         )
 
         return {
