@@ -67,4 +67,22 @@ class MessageRepository:
         result = await self.db.execute(stmt)
 
         return result.scalars().all()
+
+    async def mark_as_read(self, message_id: str):
+        import uuid
+        try:
+            msg_uuid = uuid.UUID(message_id)
+        except ValueError:
+            return None
+
+        stmt = select(Message).where(Message.id == msg_uuid)
+        result = await self.db.execute(stmt)
+        message = result.scalars().first()
+        if message:
+            message.is_read = True
+            await self.db.commit()
+            await self.db.refresh(message)
+            return message
+        return None
+
         

@@ -30,5 +30,11 @@ class ConnectionManager:
     def is_online(self, user_id: str) -> bool:
         return user_id in self.active_connections
 
+    async def broadcast(self, message: dict, exclude_user_id: str = None):
+        for user_id in list(self.active_connections.keys()):
+            if exclude_user_id and user_id == exclude_user_id:
+                continue
+            await self.send_to_user(user_id, message)
+
 
 manager = ConnectionManager()
