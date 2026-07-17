@@ -5,6 +5,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: dict[str, WebSocket] = {}
 
+    #   connect
     async def connect(
         self,
         user_id: str,
@@ -13,10 +14,12 @@ class ConnectionManager:
         await websocket.accept()
 
         self.active_connections[user_id] = websocket
-
+    
+    #   disconnect
     def disconnect(self, user_id: str):
         self.active_connections.pop(user_id, None)
 
+    #   send message to user
     async def send_to_user(
         self,
         user_id: str,
@@ -27,9 +30,11 @@ class ConnectionManager:
         if websocket:
             await websocket.send_json(message)
 
+    #   check if user is online
     def is_online(self, user_id: str) -> bool:
         return user_id in self.active_connections
 
+    #   broadcast message to all users
     async def broadcast(self, message: dict, exclude_user_id: str = None):
         for user_id in list(self.active_connections.keys()):
             if exclude_user_id and user_id == exclude_user_id:
