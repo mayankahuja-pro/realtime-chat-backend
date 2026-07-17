@@ -3,10 +3,13 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logger import logger
 from app.db.session import AsyncSessionLocal
 from app.repositories.message import MessageRepository
 from app.services.message import MessageService
 from app.websocket.manager import manager
+from app.websocket.redis_pubsub import publish
+
 
 router = APIRouter()
 
@@ -19,7 +22,7 @@ async def websocket_endpoint(
     await manager.connect(user_id, websocket)
 
     # Broadcast presence (online) status to other users
-    await manager.broadcast(
+    await publish(
         {
             "type": "presence",
             "user_id": user_id,
@@ -37,7 +40,12 @@ async def websocket_endpoint(
     try:
         while True:
             data = await websocket.receive_text()
-            payload = json.loads(data)
+            try:
+                payload = json.loads(data)
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON from {user_id}: {data[:100]}")
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+                continue
 
             msg_type = payload.get("type")
 
@@ -105,15 +113,15 @@ async def websocket_endpoint(
                 )
 
     except WebSocketDisconnect:
-        pass
-    except Exception:
-        pass
+        logger.info(f"WebSocket disconnected: {user_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for {user_id}: {e}", exc_info=True)
     finally:
         manager.disconnect(user_id)
         await db.close()
 
         # Broadcast presence (offline) status to other users
-        await manager.broadcast(
+        await publish(
             {
                 "type": "presence",
                 "user_id": user_id,

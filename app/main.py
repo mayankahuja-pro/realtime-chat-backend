@@ -6,7 +6,9 @@ from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logger import logger
 from app.db.session import engine
+import asyncio
 
+from app.websocket.redis_pubsub import subscribe
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,13 +21,19 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
-
 app = FastAPI(
     title=settings.APP_NAME,
     version="1.0.0",
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+@app.on_event("startup")
+async def startup():
+
+    asyncio.create_task(
+        subscribe()
+    )
 
 register_exception_handlers(app)
 
