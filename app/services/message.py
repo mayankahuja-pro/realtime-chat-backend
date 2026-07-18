@@ -19,3 +19,18 @@ class MessageService:
         )
 
         return await self.repository.create(message)
+
+    async def get_chat_history(
+        self,
+        current_user: str,
+        other_user: str,
+        limit: int,
+        offset: int,
+    ):
+
+        return await self.repository.get_conversation(
+            current_user,
+            other_user,
+            limit,
+            offset,
+        )
