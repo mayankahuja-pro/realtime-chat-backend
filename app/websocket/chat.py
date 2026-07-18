@@ -27,9 +27,21 @@ async def websocket_endpoint(
     try:
         while True:
             data = await websocket.receive_text()
-
             payload = json.loads(data)
 
+            # 1. Check for typing event first
+            if payload.get("type") == "typing":
+                typing_response = {
+                    "type": "typing",
+                    "sender": user_id
+                }
+                await manager.send_to_user(
+                    payload["receiver_id"],
+                    typing_response,
+                )
+                continue  # Skip database insertion and proceed to next message
+
+            # 2. Handle standard chat messages
             receiver_id = payload["receiver_id"]
             content = payload["content"]
 
