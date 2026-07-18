@@ -44,3 +44,9 @@ class MessageRepository:
         result = await self.db.execute(stmt)
 
         return result.scalars().all()   
+
+#     async def mark_as_read(
+#     receiver_id,
+#     sender_id
+# ):
+#     ...

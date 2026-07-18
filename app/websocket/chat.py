@@ -29,6 +29,16 @@ async def websocket_endpoint(
             data = await websocket.receive_text()
             payload = json.loads(data)
 
+            if payload.get("type") == "ping":
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "pong"
+                        }
+                    )
+                )
+                continue
+
             # 1. Check for typing event first
             if payload.get("type") == "typing":
                 typing_response = {
@@ -71,6 +81,10 @@ async def websocket_endpoint(
             )
 
     except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    
+    except Exception:
+
         manager.disconnect(user_id)
 
     finally:
