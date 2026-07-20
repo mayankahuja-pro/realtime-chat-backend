@@ -15,7 +15,9 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
-    REDIS_URL: str
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int = 0
 
     model_config = SettingsConfigDict(
         env_file=".env",
