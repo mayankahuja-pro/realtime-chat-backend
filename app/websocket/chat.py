@@ -7,6 +7,7 @@ from app.db.session import AsyncSessionLocal
 from app.repositories.message import MessageRepository
 from app.services.message import MessageService
 from app.websocket.manager import manager
+from app.websocket.redis_pubsub import publish
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
 ):
+
     await manager.connect(user_id, websocket)
 
     db: AsyncSession = AsyncSessionLocal()
@@ -25,34 +27,62 @@ async def websocket_endpoint(
     )
 
     try:
-        while True:
-            data = await websocket.receive_text()
-            payload = json.loads(data)
 
-            if payload.get("type") == "ping":
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": "pong"
-                        }
-                    )
+        while True:
+
+            text = await websocket.receive_text()
+
+            try:
+                payload = json.loads(text)
+
+            except json.JSONDecodeError:
+
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": "Invalid JSON format"
+                    }
                 )
+
                 continue
 
-            # 1. Check for typing event first
-            if payload.get("type") == "typing":
-                typing_response = {
-                    "type": "typing",
-                    "sender": user_id
-                }
-                await manager.send_to_user(
-                    payload["receiver_id"],
-                    typing_response,
-                )
-                continue  # Skip database insertion and proceed to next message
+            message_type = payload.get("type")
 
-            # 2. Handle standard chat messages
+            if message_type == "ping":
+
+                await websocket.send_json(
+                    {
+                        "type": "pong"
+                    }
+                )
+
+                continue
+
+            if message_type == "typing":
+
+                await publish(
+                    {
+                        "type": "typing",
+                        "sender_id": user_id,
+                        "receiver_id": payload["receiver_id"]
+                    }
+                )
+
+                continue
+
+            if message_type != "message":
+
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": "Unknown message type"
+                    }
+                )
+
+                continue
+
             receiver_id = payload["receiver_id"]
+
             content = payload["content"]
 
             message = await service.save_private_message(
@@ -62,6 +92,7 @@ async def websocket_endpoint(
             )
 
             response = {
+                "type": "message",
                 "id": str(message.id),
                 "sender_id": str(message.sender_id),
                 "receiver_id": str(message.receiver_id),
@@ -70,22 +101,14 @@ async def websocket_endpoint(
                 "created_at": message.created_at.isoformat(),
             }
 
-            await manager.send_to_user(
-                receiver_id,
-                response,
-            )
-
-            await manager.send_to_user(
-                user_id,
-                response,
-            )
+            await publish(response)
 
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
-    
-    except Exception:
 
-        manager.disconnect(user_id)
+        print(f"{user_id} disconnected")
 
     finally:
+
+        manager.disconnect(user_id)
+
         await db.close()
