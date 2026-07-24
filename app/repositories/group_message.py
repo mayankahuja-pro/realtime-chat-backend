@@ -4,7 +4,7 @@ from app.models.groupMessage import GroupMessage
 from datetime import datetime, timezone
 from uuid import UUID
 from app.models.groupMessage import GroupMessage
-
+from sqlalchemy import select
  
 
 
@@ -36,3 +36,24 @@ class GroupMessageRepository:
         await self.db.refresh(message)
 
         return message
+
+    async def get_messages(
+        self,
+        group_id,
+        page: int,
+        limit: int,
+    ):
+
+        offset = (page - 1) * limit
+
+        stmt = (
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self.db.execute(stmt)
+
+        return result.scalars().all()

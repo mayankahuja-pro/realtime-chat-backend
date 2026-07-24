@@ -17,3 +17,15 @@ class GroupMessageService:
             sender_id,
             content,
         )
+
+    async def get_messages(
+        self,
+        group_id,
+        page,
+        limit,
+    ):
+        return await self.repository.get_messages(
+            group_id,
+            page,
+            limit,
+        )
