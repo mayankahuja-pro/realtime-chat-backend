@@ -1,14 +1,16 @@
 from fastapi import WebSocket
 from typing import Dict
 
+import asyncio
+
+from fastapi import WebSocket
+from typing import Dict, Set
 
 class ConnectionManager:
 
     def __init__(self):
         # Private Chat
-        # {
-        #     "user_id": websocket
-        # }
+        # {"user_id": websocket}
         self.active_connections: Dict[str, WebSocket] = {}
 
         # Group Chat
@@ -18,6 +20,9 @@ class ConnectionManager:
         #     }
         # }
         self.group_connections: Dict[str, Dict[str, WebSocket]] = {}
+
+        # Keep track of subscribed Redis channels
+        self.group_subscribers: Set[str] = set()
 
     # =====================================================
     # PRIVATE CHAT
@@ -78,8 +83,21 @@ class ConnectionManager:
         self.group_connections[group_id][user_id] = websocket
 
         print(f"\nUser {user_id} joined group {group_id}")
+
+        # Start Redis subscriber only once
+        if group_id not in self.group_subscribers:
+
+            from app.websocket.group_pubsub import subscribe_group
+
+            self.group_subscribers.add(group_id)
+
+            asyncio.create_task(
+                subscribe_group(group_id)
+            )
         print(self.group_connections)
 
+
+#  
     def disconnect_group(
         self,
         group_id: str,
@@ -93,10 +111,15 @@ class ConnectionManager:
         # Remove empty group
         if not self.group_connections[group_id]:
             del self.group_connections[group_id]
+        # Allow a new subscriber if the group becomes active again
+        self.group_subscribers.discard(group_id)
 
         print(f"\nUser {user_id} left group {group_id}")
         print(self.group_connections)
 
+
+
+# 
     async def broadcast_to_group(
         self,
         group_id: str,
