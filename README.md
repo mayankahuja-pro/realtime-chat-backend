@@ -65,7 +65,7 @@ Designed to demonstrate backend engineering skills required for Software Enginee
 
 ---
 
-# 🏗 Tech Stack
+#  Tech Stack
 
 ## Backend
 
