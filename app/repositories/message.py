@@ -4,10 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.message import Message
 
 from sqlalchemy import or_, and_, select
-from app.models.message import Message
-
+ 
 class MessageRepository:
-
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -16,27 +14,6 @@ class MessageRepository:
         await self.db.commit()
         await self.db.refresh(message)
         return message
-
-    # async def get_conversation(
-    #     self,
-    #     user1,
-    #     user2,
-    # ):
-    #     stmt = (
-    #         select(Message)
-    #         .where(
-    #             ((Message.sender_id == user1) &
-    #              (Message.receiver_id == user2))
-    #             |
-    #             ((Message.sender_id == user2) &
-    #              (Message.receiver_id == user1))
-    #         )
-    #         .order_by(Message.created_at.asc())
-    #     )
-
-    #     result = await self.db.execute(stmt)
-
-    #     return result.scalars().all()
 
     async def get_conversation(
         self,
@@ -66,23 +43,10 @@ class MessageRepository:
 
         result = await self.db.execute(stmt)
 
-        return result.scalars().all()
+        return result.scalars().all()   
 
-    async def mark_as_read(self, message_id: str):
-        import uuid
-        try:
-            msg_uuid = uuid.UUID(message_id)
-        except ValueError:
-            return None
-
-        stmt = select(Message).where(Message.id == msg_uuid)
-        result = await self.db.execute(stmt)
-        message = result.scalars().first()
-        if message:
-            message.is_read = True
-            await self.db.commit()
-            await self.db.refresh(message)
-            return message
-        return None
-
-        
+#     async def mark_as_read(
+#     receiver_id,
+#     sender_id
+# ):
+#     ...
