@@ -19,7 +19,7 @@ class MessageService:
         )
 
         return await self.repository.create(message)
-
+    
     async def get_chat_history(
         self,
         current_user: str,
@@ -34,3 +34,6 @@ class MessageService:
             limit,
             offset,
         )
+
+    async def mark_message_as_read(self, message_id: str):
+        return await self.repository.mark_as_read(message_id)

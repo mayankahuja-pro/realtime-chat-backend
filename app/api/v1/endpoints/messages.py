@@ -6,7 +6,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.repositories.message import MessageRepository
 from app.services.message import MessageService
-from app.websocket.manager import manager
+
 router = APIRouter(
     prefix="/messages",
     tags=["Messages"],
@@ -32,10 +32,3 @@ async def get_messages(
         limit,
         offset,
     )
-
-@router.get("/users/status/{user_id}")
-async def get_user_status(
-    user_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    return "online" if  manager.is_online(user_id) else "offline"   

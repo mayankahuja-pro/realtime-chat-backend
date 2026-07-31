@@ -30,36 +30,8 @@ async def subscribe():
         if message["type"] != "message":
             continue
 
-        try:
-
-            raw_data = message["data"]
-
-            # Decode bytes if Redis returns bytes
-            if isinstance(raw_data, bytes):
-                raw_data = raw_data.decode("utf-8")
-
-            data = json.loads(raw_data)
-
-            receiver_id = data.get("receiver_id")
-            sender_id = data.get("sender_id")
-
-
-            # Send to receiver
-            if receiver_id:
-                await manager.send_to_user(
-                    receiver_id,
-                    data,
-                )
-
-            # Send to sender
-            if sender_id:
-
-                await manager.send_to_user(
-                    sender_id,
-                    data,
-                )
-
-
-        except Exception:
-            print("\n❌ REDIS SUBSCRIBER ERROR")
-            traceback.print_exc()
+        data = json.loads(message["data"])
+        await manager.broadcast(
+            data["message"],
+            exclude_user_id=data.get("exclude_user_id"),
+        )

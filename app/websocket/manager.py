@@ -1,47 +1,25 @@
 from fastapi import WebSocket
-from typing import Dict
 
-import asyncio
-
-from fastapi import WebSocket
-from typing import Dict, Set
 
 class ConnectionManager:
-
     def __init__(self):
-        # Private Chat
-        # {"user_id": websocket}
-        self.active_connections: Dict[str, WebSocket] = {}
+        self.active_connections: dict[str, WebSocket] = {}
 
-        # Group Chat
-        # {
-        #     "group_id": {
-        #         "user_id": websocket
-        #     }
-        # }
-        self.group_connections: Dict[str, Dict[str, WebSocket]] = {}
-
-        # Keep track of subscribed Redis channels
-        self.group_subscribers: Set[str] = set()
-
-    # =====================================================
-    # PRIVATE CHAT
-    # =====================================================
-
+    #   connect
     async def connect(
         self,
         user_id: str,
         websocket: WebSocket,
     ):
         await websocket.accept()
-        self.active_connections[user_id] = websocket
 
-    def disconnect(
-        self,
-        user_id: str,
-    ):
+        self.active_connections[user_id] = websocket
+    
+    #   disconnect
+    def disconnect(self, user_id: str):
         self.active_connections.pop(user_id, None)
 
+    #   send message to user
     async def send_to_user(
         self,
         user_id: str,
@@ -52,102 +30,16 @@ class ConnectionManager:
         if websocket:
             await websocket.send_json(message)
 
-    async def broadcast(
-        self,
-        message: dict,
-    ):
-        for websocket in self.active_connections.values():
-            await websocket.send_json(message)
-
-    def is_online(
-        self,
-        user_id: str,
-    ) -> bool:
+    #   check if user is online
+    def is_online(self, user_id: str) -> bool:
         return user_id in self.active_connections
 
-    # =====================================================
-    # GROUP CHAT
-    # =====================================================
-
-    async def connect_group(
-        self,
-        group_id: str,
-        user_id: str,
-        websocket: WebSocket,
-    ):
-        await websocket.accept()
-
-        if group_id not in self.group_connections:
-            self.group_connections[group_id] = {}
-
-        self.group_connections[group_id][user_id] = websocket
-
-        print(f"\nUser {user_id} joined group {group_id}")
-
-        # Start Redis subscriber only once
-        if group_id not in self.group_subscribers:
-
-            from app.websocket.group_pubsub import subscribe_group
-
-            self.group_subscribers.add(group_id)
-
-            asyncio.create_task(
-                subscribe_group(group_id)
-            )
-        print(self.group_connections)
-
-
-#  
-    def disconnect_group(
-        self,
-        group_id: str,
-        user_id: str,
-    ):
-        if group_id not in self.group_connections:
-            return
-
-        self.group_connections[group_id].pop(user_id, None)
-
-        # Remove empty group
-        if not self.group_connections[group_id]:
-            del self.group_connections[group_id]
-        # Allow a new subscriber if the group becomes active again
-        self.group_subscribers.discard(group_id)
-
-        print(f"\nUser {user_id} left group {group_id}")
-        print(self.group_connections)
-
-
-
-# 
-    async def broadcast_to_group(
-        self,
-        group_id: str,
-        message: dict,
-    ):
-        if group_id not in self.group_connections:
-            return
-
-        dead_connections = []
-
-        for user_id, websocket in self.group_connections[group_id].items():
-            try:
-                await websocket.send_json(message)
-            except Exception:
-                # Client disconnected unexpectedly
-                dead_connections.append(user_id)
-
-        # Cleanup dead connections
-        for user_id in dead_connections:
-            self.disconnect_group(group_id, user_id)
-
-    def get_group_members(
-        self,
-        group_id: str,
-    ):
-        return list(
-            self.group_connections.get(group_id, {}).keys()
-        )
+    #   broadcast message to all users
+    async def broadcast(self, message: dict, exclude_user_id: str = None):
+        for user_id in list(self.active_connections.keys()):
+            if exclude_user_id and user_id == exclude_user_id:
+                continue
+            await self.send_to_user(user_id, message)
 
 
 manager = ConnectionManager()

@@ -1,24 +1,11 @@
 import logging
-from pathlib import Path
+from app.core.config import settings
 
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
+log_level = logging.DEBUG if settings.DEBUG else logging.INFO
 
-LOG_FILE = LOG_DIR / "app.log"
-
-logger = logging.getLogger("chat_app")
-logger.setLevel(logging.INFO)
-
-formatter = logging.Formatter(
-    "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+logging.basicConfig(
+    level=log_level,
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 
-file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(formatter)
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-
-logger.handlers.clear()
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+logger = logging.getLogger("chat_app")

@@ -3,11 +3,13 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logger import logger
 from app.db.session import AsyncSessionLocal
 from app.repositories.message import MessageRepository
 from app.services.message import MessageService
 from app.websocket.manager import manager
 from app.websocket.redis_pubsub import publish
+
 
 router = APIRouter()
 
@@ -17,9 +19,6 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id: str,
 ):
-
- 
-
     await manager.connect(user_id, websocket)
 
     # Broadcast presence (online) status to other users
@@ -39,87 +38,84 @@ async def websocket_endpoint(
     )
 
     try:
-
         while True:
-
-            text = await websocket.receive_text()
-
+            data = await websocket.receive_text()
             try:
-                payload = json.loads(text)
-
+                payload = json.loads(data)
             except json.JSONDecodeError:
-
-                await websocket.send_json(
-                    {
-                        "type": "error",
-                        "message": "Invalid JSON format"
-                    }
-                )
-
+                logger.warning(f"Invalid JSON from {user_id}: {data[:100]}")
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
                 continue
 
-            message_type = payload.get("type")
+            msg_type = payload.get("type")
 
-            if message_type == "ping":
-
-                await websocket.send_json(
-                    {
-                        "type": "pong"
-                    }
-                )
-
+            if msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
                 continue
 
-            if message_type == "typing":
-
-                await publish(
-                    {
-                        "type": "typing",
-                        "sender_id": user_id,
-                        "receiver_id": payload["receiver_id"]
-                    }
-                )
-
+            elif msg_type == "typing":
+                receiver_id = payload.get("receiver_id")
+                if receiver_id:
+                    await manager.send_to_user(
+                        receiver_id,
+                        {
+                            "type": "typing",
+                            "sender": user_id
+                        }
+                    )
                 continue
 
-            if message_type != "message":
-
-                await websocket.send_json(
-                    {
-                        "type": "error",
-                        "message": "Unknown message type"
-                    }
-                )
-
+            elif msg_type == "read_receipt":
+                message_id = payload.get("message_id")
+                if message_id:
+                    updated_msg = await service.mark_message_as_read(message_id)
+                    if updated_msg:
+                        await manager.send_to_user(
+                            str(updated_msg.sender_id),
+                            {
+                                "type": "read_receipt",
+                                "message_id": message_id,
+                                "reader_id": user_id
+                            }
+                        )
                 continue
 
-            receiver_id = payload["receiver_id"]
+            else:
+                receiver_id = payload.get("receiver_id")
+                content = payload.get("content")
 
-            content = payload["content"]
+                if not receiver_id or not content:
+                    continue
 
-            message = await service.save_private_message(
-                sender_id=user_id,
-                receiver_id=receiver_id,
-                content=content,
-            )
+                message = await service.save_private_message(
+                    sender_id=user_id,
+                    receiver_id=receiver_id,
+                    content=content,
+                )
 
-            response = {
-                "type": "message",
-                "id": str(message.id),
-                "sender_id": str(message.sender_id),
-                "receiver_id": str(message.receiver_id),
-                "content": message.content,
-                "is_read": message.is_read,
-                "created_at": message.created_at.isoformat(),
-            }
+                response = {
+                    "id": str(message.id),
+                    "sender_id": str(message.sender_id),
+                    "receiver_id": str(message.receiver_id),
+                    "content": message.content,
+                    "is_read": message.is_read,
+                    "created_at": message.created_at.isoformat(),
+                }
 
-            await publish(response)
+                await manager.send_to_user(
+                    receiver_id,
+                    response,
+                )
+
+                await manager.send_to_user(
+                    user_id,
+                    response,
+                )
 
     except WebSocketDisconnect:
-
-        print(f"{user_id} disconnected")
-
- 
+        logger.info(f"WebSocket disconnected: {user_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for {user_id}: {e}", exc_info=True)
     finally:
         manager.disconnect(user_id)
         await db.close()

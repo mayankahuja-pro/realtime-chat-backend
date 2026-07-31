@@ -1,42 +1,25 @@
-import asyncio
 from contextlib import asynccontextmanager
-
+from app.exceptions.handlers import register_exception_handlers
 from fastapi import FastAPI
 
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logger import logger
 from app.db.session import engine
-from app.exceptions.handlers import register_exception_handlers
-from app.websocket.redis_pubsub import subscribe
+import asyncio
 
 from app.websocket.redis_pubsub import subscribe
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        # Database connection check
         async with engine.begin() as conn:
             await conn.run_sync(lambda conn: None)
-
         logger.info("✅ Database Connected Successfully")
-
-        # Start Redis subscriber
-        asyncio.create_task(subscribe())
-        logger.info("🚀 Redis Subscriber Task Started")
-
-        yield
-
     except Exception as e:
-        logger.error(f"❌ Startup Error: {e}")
-        raise
-
-    finally:
-        logger.info("🛑 Shutting Down...")
-
-        await engine.dispose()
-
-        logger.info("✅ Database Connection Closed")
+        logger.error(f"❌ Database Connection Failed: {e}")
+    yield
+    await engine.dispose()
 
 app = FastAPI(
     title=settings.APP_NAME,
