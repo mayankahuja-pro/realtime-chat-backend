@@ -18,7 +18,19 @@ async def websocket_endpoint(
     user_id: str,
 ):
 
+ 
+
     await manager.connect(user_id, websocket)
+
+    # Broadcast presence (online) status to other users
+    await publish(
+        {
+            "type": "presence",
+            "user_id": user_id,
+            "status": "online"
+        },
+        exclude_user_id=user_id
+    )
 
     db: AsyncSession = AsyncSessionLocal()
 
@@ -107,8 +119,17 @@ async def websocket_endpoint(
 
         print(f"{user_id} disconnected")
 
+ 
     finally:
-
         manager.disconnect(user_id)
-
         await db.close()
+
+        # Broadcast presence (offline) status to other users
+        await publish(
+            {
+                "type": "presence",
+                "user_id": user_id,
+                "status": "offline"
+            },
+            exclude_user_id=user_id
+        )

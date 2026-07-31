@@ -65,7 +65,7 @@ Designed to demonstrate backend engineering skills required for Software Enginee
 
 ---
 
-# 🏗 Tech Stack
+#  Tech Stack
 
 ## Backend
 
@@ -95,7 +95,7 @@ Designed to demonstrate backend engineering skills required for Software Enginee
 
 ---
 
-# 📁 Project Structure
+#  Project Structure
 
 ```text
 real-time-chat-app/
@@ -133,7 +133,7 @@ real-time-chat-app/
 
 ---
 
-# 🏛 Architecture
+# Architecture
 
 ```text
                 Client (Flutter/Web)
@@ -159,7 +159,7 @@ real-time-chat-app/
 
 ---
 
-# ⚙️ Installation
+#  Installation
 
 ## Clone Repository
 

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     AWS_REGION: str
     AWS_BUCKET_NAME: str
 
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int=0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
